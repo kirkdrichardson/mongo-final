@@ -53,20 +53,36 @@ function ItemDAO(database) {
         *
         */
 
-        var categories = [];
-        var category = {
-            _id: "All",
-            num: 9999
-        };
+        console.log('getCategories()')
 
-        categories.push(category)
+        var cursor =
+          this.db.collection('item').aggregate([
+            { $group: {
+                _id: "$category",
+                num: { $sum: 1 }
+              }
+            },
+            { $project: { num: 1 }},
+            { $sort: { "_id": 1 }}
+          ]);
 
-        // TODO-lab1A Replace all code above (in this method).
+          var category = {
+              _id: "All",
+          };
 
-        // TODO Include the following line in the appropriate
-        // place within your code to pass the categories array to the
-        // callback.
-        callback(categories);
+        cursor.toArray(function(err, docs) {
+            assert.equal(null, err);
+
+            let total = 0;
+            for (let i = 0; i < docs.length; i++) {
+              total += docs[i].num
+            }
+
+            category.num = total;
+            docs.unshift(category);
+
+            callback(docs);
+          });
     }
 
 
@@ -95,18 +111,25 @@ function ItemDAO(database) {
          *
          */
 
-        var pageItem = this.createDummyItem();
-        var pageItems = [];
-        for (var i=0; i<5; i++) {
-            pageItems.push(pageItem);
-        }
+         console.log('getItems()')
 
-        // TODO-lab1B Replace all code above (in this method).
+         const query = category === 'All' ? {} : { category };
 
-        // TODO Include the following line in the appropriate
-        // place within your code to pass the items for the selected page
-        // to the callback.
-        callback(pageItems);
+         var cursor = this.db.collection('item').find(query)
+          .sort({"_id": 1})
+          .limit(itemsPerPage)
+          .skip(page * itemsPerPage)
+
+        var items = cursor.toArray(function(err, docs) {
+          assert.equal(null, err);
+
+          callback(docs);
+        });
+
+        // console.log(query)
+         // console.log('category is ', category)
+         // console.log('page is ', page)
+         // console.log('itemsPerPage is ', itemsPerPage)
     }
 
 
@@ -130,9 +153,73 @@ function ItemDAO(database) {
          *
          */
 
-         // TODO Include the following line in the appropriate
-         // place within your code to pass the count to the callback.
-        callback(numItems);
+         console.log('getNumItems()');
+
+          // calculate the number of docs in a category
+          // this is inefficient. Should not have to calculate num of all docs
+          var cursor =
+            this.db.collection('item').aggregate([
+              { $group: {
+                  _id: "$category",
+                  num: { $sum: 1 }
+                }
+              },
+              { $project: { num: 1 }},
+              { $sort: { "_id": 1 }}
+            ]);
+
+
+            // create helper function to find docs from cursor
+            function findNumOfDocsInCategory(docs, category) {
+              for (let i = 0; i < docs.length; i++) {
+                if (docs[i]._id === category) {
+                  return docs[i].num;
+                }
+              }
+            }
+
+            if (category === 'All') {
+              var totalDoc = {
+                  _id: "All",
+              };
+
+              cursor.toArray(function(err, docs) {
+                  assert.equal(null, err);
+
+                  let total = 0;
+                  for (let i = 0; i < docs.length; i++) {
+                    total += docs[i].num
+                  }
+
+                  totalDoc.num = total;
+                  docs.unshift(totalDoc);
+
+                  const numItems = findNumOfDocsInCategory(docs, category);
+
+                  console.log('numItems is ', numItems)
+
+                  callback(numItems);
+                });
+            } else {
+              cursor.toArray(function(err, docs) {
+                assert.equal(null, err);
+
+                const numItems = findNumOfDocsInCategory(docs, category);
+                console.log('numItems is ', numItems)
+                callback(numItems);
+              })
+            }
+
+         // function getNumber(docs) {
+         //   for (let i = 0; i < docs.length; i++) {
+         //     if (docs[i]._id === category) {
+         //       console.log(docs[i].num)
+         //       return docs[i].num;
+         //     }
+         //   }
+         // }
+
+         // callback(this.getCategories(getNumber));
     }
 
 
