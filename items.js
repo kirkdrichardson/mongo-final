@@ -205,7 +205,7 @@ function ItemDAO(database) {
                 assert.equal(null, err);
 
                 const numItems = findNumOfDocsInCategory(docs, category);
-                console.log('numItems is ', numItems)
+
                 callback(numItems);
               })
             }
@@ -250,26 +250,42 @@ function ItemDAO(database) {
          *
          */
 
-        var item = this.createDummyItem();
-        var items = [];
-        for (var i=0; i<5; i++) {
-            items.push(item);
-        }
+         // db.item.createIndex({ title: 1, slogan: 1, description: 1 });
+
+         console.log('searchItems()');
+
+         // console.log(query, page, itemsPerPage, callback);
+
+         var cursor = this.db.collection('item').find({
+           $text: { $search: query }
+         })
+          .sort({ _id: 1 })
+          .skip(page * itemsPerPage)
+          .limit(itemsPerPage)
+
+        cursor.toArray(function(err, items) {
+          assert.equal(null, err);
+
+          callback(items)
+        })
+
+        // var item = this.createDummyItem();
+        // var items = [];
+        // for (var i=0; i<5; i++) {
+        //     items.push(item);
+        // }
 
         // TODO-lab2A Replace all code above (in this method).
 
         // TODO Include the following line in the appropriate
         // place within your code to pass the items for the selected page
         // of search results to the callback.
-        callback(items);
+        // callback(cursor);
     }
 
 
     this.getNumSearchItems = function(query, callback) {
         "use strict";
-
-        var numItems = 0;
-
         /*
         * TODO-lab2B
         *
@@ -282,8 +298,16 @@ function ItemDAO(database) {
         * a SINGLE text index on title, slogan, and description. You should
         * simply do this in the mongo shell.
         */
+        console.log('getNumSearchItems()');
 
-        callback(numItems);
+        this.db.collection('item').find({
+          $text: { $search: query }
+        })
+          .toArray(function(err, docs) {
+            assert.equal(null, err);
+
+            callback(docs.length)
+          })
     }
 
 
@@ -299,8 +323,9 @@ function ItemDAO(database) {
          * _id and pass the matching item to the callback function.
          *
          */
+         console.log('getItem()');
 
-        var item = this.createDummyItem();
+        var item = findOne({ _id: itemId });
 
         // TODO-lab3 Replace all code above (in this method).
 
